@@ -11,7 +11,7 @@ export default function Sidebar() {
   const lang = (user?.language || 'en') as LangCode;
 
   const nav = [
-    { to: '/', icon: LayoutDashboard, label: t('dashboard', lang) },
+    { to: '/dashboard', icon: LayoutDashboard, label: t('dashboard', lang) },
     { to: '/compose', icon: PenSquare, label: t('compose', lang) },
     { to: '/calendar', icon: Calendar, label: t('calendar', lang) },
     { to: '/inbox', icon: Inbox, label: t('inbox', lang) },
@@ -41,7 +41,7 @@ export default function Sidebar() {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === '/dashboard'}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive

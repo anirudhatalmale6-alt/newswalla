@@ -39,6 +39,7 @@ const API_KEY_SETTINGS = [
   'stripe_publishable_key',
   'stripe_secret_key',
   'stripe_price_id',
+  'stripe_team_price_id',
 ];
 
 export function getApiKeys(): Record<string, string> {

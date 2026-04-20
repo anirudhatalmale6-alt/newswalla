@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './stores/authStore';
 import MainLayout from './components/layout/MainLayout';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -27,7 +28,14 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   const { token, loading, isAdmin } = useAuthStore();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading...</div>;
   if (!token) return <Navigate to="/login" replace />;
-  if (!isAdmin()) return <Navigate to="/" replace />;
+  if (!isAdmin()) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
+function PublicOnly({ children }: { children: React.ReactNode }) {
+  const { token, loading } = useAuthStore();
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading...</div>;
+  if (token) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -42,8 +50,12 @@ export default function App() {
     <BrowserRouter basename="/newswalla">
       <Toaster position="top-right" />
       <Routes>
+        {/* Public landing page */}
+        <Route path="/" element={<PublicOnly><Landing /></PublicOnly>} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+
+        {/* Protected app routes */}
         <Route
           element={
             <ProtectedRoute>
@@ -51,7 +63,7 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/compose" element={<Compose />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/inbox" element={<InboxPage />} />
