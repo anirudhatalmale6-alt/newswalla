@@ -96,4 +96,4 @@ worker.on('failed', (job, err) => {
   logger.error({ jobId: job?.id, err }, 'Job failed');
 });
 
-logger.info('VTN Worker started');
+logger.info('NewsWalla Worker started');

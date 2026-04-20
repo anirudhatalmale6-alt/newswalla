@@ -23,9 +23,9 @@ export default function Sidebar() {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <Zap className="w-8 h-8 text-brand-600" />
-          <span className="text-xl font-bold text-gray-900">VTN</span>
+          <span className="text-xl font-bold text-gray-900">NewsWalla</span>
         </div>
-        <p className="text-xs text-gray-500 mt-1">Viral The News</p>
+        <p className="text-xs text-gray-500 mt-1">Social Media Scheduler</p>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">

@@ -1,5 +1,5 @@
 {
-  "name": "@vtn/shared",
+  "name": "@newswalla/shared",
   "version": "1.0.0",
   "private": true,
   "main": "src/types/index.ts",

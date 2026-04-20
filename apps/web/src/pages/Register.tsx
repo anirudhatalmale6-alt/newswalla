@@ -32,7 +32,7 @@ export default function Register() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-2">
             <Zap className="w-10 h-10 text-brand-600" />
-            <span className="text-3xl font-bold text-gray-900">VTN</span>
+            <span className="text-3xl font-bold text-gray-900">NewsWalla</span>
           </div>
           <p className="text-gray-600">Create your account</p>
         </div>
