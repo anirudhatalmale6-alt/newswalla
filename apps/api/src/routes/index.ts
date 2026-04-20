@@ -8,6 +8,7 @@ import inboxRoutes from './inbox.routes';
 import aiRoutes from './ai.routes';
 import teamsRoutes from './teams.routes';
 import mediaRoutes from './media.routes';
+import settingsRoutes from './settings.routes';
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use('/inbox', inboxRoutes);
 router.use('/ai', aiRoutes);
 router.use('/teams', teamsRoutes);
 router.use('/media', mediaRoutes);
+router.use('/settings', settingsRoutes);
 
 export default router;

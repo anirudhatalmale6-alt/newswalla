@@ -1,23 +1,31 @@
-import { Pool } from 'pg';
-import { env } from './env';
+import Database from 'better-sqlite3';
+import path from 'path';
+import fs from 'fs';
 
-export const pool = new Pool({
-  connectionString: env.DATABASE_URL,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
-
-pool.on('error', (err) => {
-  console.error('Unexpected database error:', err);
-});
-
-export async function query<T = any>(text: string, params?: any[]): Promise<T[]> {
-  const result = await pool.query(text, params);
-  return result.rows;
+const dataDir = path.resolve('./data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
 }
 
-export async function queryOne<T = any>(text: string, params?: any[]): Promise<T | null> {
-  const result = await pool.query(text, params);
-  return result.rows[0] || null;
+const dbPath = path.join(dataDir, 'newswalla.db');
+export const db = new Database(dbPath);
+
+// Enable WAL mode for better concurrent read performance
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+db.pragma('busy_timeout = 5000');
+
+export function query<T = any>(sql: string, params: any[] = []): T[] {
+  const stmt = db.prepare(sql);
+  return stmt.all(...params) as T[];
+}
+
+export function queryOne<T = any>(sql: string, params: any[] = []): T | null {
+  const stmt = db.prepare(sql);
+  return (stmt.get(...params) as T) || null;
+}
+
+export function run(sql: string, params: any[] = []) {
+  const stmt = db.prepare(sql);
+  return stmt.run(...params);
 }

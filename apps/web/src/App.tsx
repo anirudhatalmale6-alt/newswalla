@@ -28,7 +28,7 @@ export default function App() {
   }, [loadUser]);
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/newswalla">
       <Toaster position="top-right" />
       <Routes>
         <Route path="/login" element={<Login />} />

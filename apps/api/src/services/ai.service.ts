@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import { getSetting } from './settings.service';
 
 interface AIGenerateOptions {
   topic: string;
@@ -7,11 +8,19 @@ interface AIGenerateOptions {
   maxLength?: number;
 }
 
+function getAnthropicKey(): string | null {
+  return env.ANTHROPIC_API_KEY || getSetting('anthropic_api_key') || null;
+}
+
+function getOpenAIKey(): string | null {
+  return env.OPENAI_API_KEY || getSetting('openai_api_key') || null;
+}
+
 export async function generateCaption(options: AIGenerateOptions): Promise<string> {
-  if (env.ANTHROPIC_API_KEY) {
+  if (getAnthropicKey()) {
     return generateWithClaude(options, 'caption');
   }
-  if (env.OPENAI_API_KEY) {
+  if (getOpenAIKey()) {
     return generateWithOpenAI(options, 'caption');
   }
   throw Object.assign(new Error('No AI API key configured'), { status: 503 });
@@ -21,9 +30,9 @@ export async function generateHashtags(content: string, platform?: string): Prom
   const prompt = `Generate 10-15 relevant hashtags for this social media post${platform ? ` on ${platform}` : ''}. Return only the hashtags, one per line, with the # symbol.\n\nPost: ${content}`;
 
   let response: string;
-  if (env.ANTHROPIC_API_KEY) {
+  if (getAnthropicKey()) {
     response = await callClaude(prompt);
-  } else if (env.OPENAI_API_KEY) {
+  } else if (getOpenAIKey()) {
     response = await callOpenAI(prompt);
   } else {
     throw Object.assign(new Error('No AI API key configured'), { status: 503 });
@@ -39,8 +48,8 @@ export async function generateHashtags(content: string, platform?: string): Prom
 export async function rewriteContent(content: string, style: string): Promise<string> {
   const prompt = `Rewrite this social media post in a ${style} tone. Keep the core message but make it more engaging. Return only the rewritten text.\n\nOriginal: ${content}`;
 
-  if (env.ANTHROPIC_API_KEY) return callClaude(prompt);
-  if (env.OPENAI_API_KEY) return callOpenAI(prompt);
+  if (getAnthropicKey()) return callClaude(prompt);
+  if (getOpenAIKey()) return callOpenAI(prompt);
   throw Object.assign(new Error('No AI API key configured'), { status: 503 });
 }
 
@@ -67,7 +76,7 @@ async function callClaude(prompt: string): Promise<string> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': env.ANTHROPIC_API_KEY!,
+      'x-api-key': getAnthropicKey()!,
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
@@ -85,7 +94,7 @@ async function callOpenAI(prompt: string): Promise<string> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+      'Authorization': `Bearer ${getOpenAIKey()}`,
     },
     body: JSON.stringify({
       model: 'gpt-4o-mini',

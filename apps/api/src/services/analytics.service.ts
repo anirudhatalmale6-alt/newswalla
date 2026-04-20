@@ -1,8 +1,8 @@
 import { query, queryOne } from '../config/database';
 
 export async function getOverview(userId: string, days: number = 30) {
-  const accounts = await query<any>(
-    'SELECT id, platform, platform_username, page_name FROM platform_accounts WHERE user_id = $1 AND is_active = true',
+  const accounts = query<any>(
+    'SELECT id, platform, platform_username, page_name FROM platform_accounts WHERE user_id = ? AND is_active = 1',
     [userId]
   );
 
@@ -19,7 +19,10 @@ export async function getOverview(userId: string, days: number = 30) {
     };
   }
 
-  const metrics = await queryOne<any>(
+  // Build placeholders for IN clause
+  const placeholders = accountIds.map(() => '?').join(',');
+
+  const metrics = queryOne<any>(
     `SELECT
        COALESCE(SUM(impressions), 0) as total_impressions,
        COALESCE(SUM(engagements), 0) as total_engagements,
@@ -27,23 +30,28 @@ export async function getOverview(userId: string, days: number = 30) {
        COALESCE(SUM(comments), 0) as total_comments,
        COALESCE(SUM(shares), 0) as total_shares
      FROM analytics_snapshots
-     WHERE platform_account_id = ANY($1)
-       AND snapshot_date >= CURRENT_DATE - $2::int`,
-    [accountIds, days]
+     WHERE platform_account_id IN (${placeholders})
+       AND snapshot_date >= date('now', '-' || ? || ' days')`,
+    [...accountIds, days]
   );
 
-  const latestFollowers = await query<any>(
-    `SELECT DISTINCT ON (platform_account_id)
-       platform_account_id, followers_count
-     FROM analytics_snapshots
-     WHERE platform_account_id = ANY($1) AND followers_count IS NOT NULL
-     ORDER BY platform_account_id, snapshot_date DESC`,
-    [accountIds]
+  // Get latest followers per account using a subquery
+  const latestFollowers = query<any>(
+    `SELECT a.platform_account_id, a.followers_count
+     FROM analytics_snapshots a
+     INNER JOIN (
+       SELECT platform_account_id, MAX(snapshot_date) as max_date
+       FROM analytics_snapshots
+       WHERE platform_account_id IN (${placeholders}) AND followers_count IS NOT NULL
+       GROUP BY platform_account_id
+     ) latest ON a.platform_account_id = latest.platform_account_id AND a.snapshot_date = latest.max_date
+     WHERE a.platform_account_id IN (${placeholders})`,
+    [...accountIds, ...accountIds]
   );
 
   const totalFollowers = latestFollowers.reduce((sum: number, r: any) => sum + (r.followers_count || 0), 0);
-  const totalImpressions = parseInt(metrics?.total_impressions || '0');
-  const totalEngagements = parseInt(metrics?.total_engagements || '0');
+  const totalImpressions = metrics?.total_impressions || 0;
+  const totalEngagements = metrics?.total_engagements || 0;
 
   const platformBreakdown = accounts.map(a => {
     const followers = latestFollowers.find((f: any) => f.platform_account_id === a.id);
@@ -69,11 +77,11 @@ export async function getOverview(userId: string, days: number = 30) {
 }
 
 export async function getAccountMetrics(accountId: string, days: number = 30) {
-  const snapshots = await query<any>(
+  const snapshots = query<any>(
     `SELECT snapshot_date, impressions, reach, engagements, likes, comments, shares, followers_count
      FROM analytics_snapshots
-     WHERE platform_account_id = $1
-       AND snapshot_date >= CURRENT_DATE - $2::int
+     WHERE platform_account_id = ?
+       AND snapshot_date >= date('now', '-' || ? || ' days')
        AND post_variant_id IS NULL
      ORDER BY snapshot_date`,
     [accountId, days]
@@ -92,12 +100,12 @@ export async function getAccountMetrics(accountId: string, days: number = 30) {
 }
 
 export async function getPostMetrics(postId: string) {
-  const metrics = await query<any>(
+  const metrics = query<any>(
     `SELECT a.*, pa.platform, pa.platform_username
      FROM analytics_snapshots a
      JOIN post_variants pv ON pv.id = a.post_variant_id
      JOIN platform_accounts pa ON pa.id = pv.platform_account_id
-     WHERE pv.post_id = $1
+     WHERE pv.post_id = ?
      ORDER BY a.snapshot_date DESC`,
     [postId]
   );

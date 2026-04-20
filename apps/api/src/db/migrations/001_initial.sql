@@ -1,178 +1,183 @@
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
 -- Users
-CREATE TABLE users (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email           VARCHAR(255) UNIQUE NOT NULL,
-    password_hash   VARCHAR(255) NOT NULL,
-    full_name       VARCHAR(255) NOT NULL,
+CREATE TABLE IF NOT EXISTS users (
+    id              TEXT PRIMARY KEY,
+    email           TEXT UNIQUE NOT NULL,
+    password_hash   TEXT NOT NULL,
+    full_name       TEXT NOT NULL,
     avatar_url      TEXT,
-    timezone        VARCHAR(64) DEFAULT 'UTC',
-    plan            VARCHAR(32) DEFAULT 'free',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
+    timezone        TEXT DEFAULT 'UTC',
+    plan            TEXT DEFAULT 'free',
+    created_at      TEXT DEFAULT (datetime('now')),
+    updated_at      TEXT DEFAULT (datetime('now'))
 );
 
 -- Social platform accounts
-CREATE TABLE platform_accounts (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    platform            VARCHAR(32) NOT NULL,
-    platform_user_id    VARCHAR(255) NOT NULL,
-    platform_username   VARCHAR(255),
+CREATE TABLE IF NOT EXISTS platform_accounts (
+    id                  TEXT PRIMARY KEY,
+    user_id             TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    platform            TEXT NOT NULL,
+    platform_user_id    TEXT NOT NULL,
+    platform_username   TEXT,
     access_token_enc    TEXT NOT NULL,
     refresh_token_enc   TEXT,
-    token_expires_at    TIMESTAMPTZ,
-    page_id             VARCHAR(255),
-    page_name           VARCHAR(255),
+    token_expires_at    TEXT,
+    page_id             TEXT,
+    page_name           TEXT,
     avatar_url          TEXT,
-    is_active           BOOLEAN DEFAULT true,
-    created_at          TIMESTAMPTZ DEFAULT NOW(),
+    is_active           INTEGER DEFAULT 1,
+    created_at          TEXT DEFAULT (datetime('now')),
     UNIQUE(user_id, platform, platform_user_id)
 );
-CREATE INDEX idx_platform_accounts_user ON platform_accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_platform_accounts_user ON platform_accounts(user_id);
 
 -- Teams
-CREATE TABLE teams (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        VARCHAR(255) NOT NULL,
-    owner_id    UUID NOT NULL REFERENCES users(id),
-    created_at  TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS teams (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    owner_id    TEXT NOT NULL REFERENCES users(id),
+    created_at  TEXT DEFAULT (datetime('now'))
 );
 
-CREATE TABLE team_members (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    team_id     UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role        VARCHAR(32) NOT NULL DEFAULT 'member',
-    can_publish BOOLEAN DEFAULT false,
-    created_at  TIMESTAMPTZ DEFAULT NOW(),
+CREATE TABLE IF NOT EXISTS team_members (
+    id          TEXT PRIMARY KEY,
+    team_id     TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role        TEXT NOT NULL DEFAULT 'member',
+    can_publish INTEGER DEFAULT 0,
+    created_at  TEXT DEFAULT (datetime('now')),
     UNIQUE(team_id, user_id)
 );
 
 -- Posts
-CREATE TABLE posts (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    team_id         UUID REFERENCES teams(id),
-    status          VARCHAR(32) NOT NULL DEFAULT 'draft',
+CREATE TABLE IF NOT EXISTS posts (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    team_id         TEXT REFERENCES teams(id),
+    status          TEXT NOT NULL DEFAULT 'draft',
     content_global  TEXT,
-    scheduled_at    TIMESTAMPTZ,
-    published_at    TIMESTAMPTZ,
-    ai_generated    BOOLEAN DEFAULT false,
-    created_by      UUID REFERENCES users(id),
-    approved_by     UUID REFERENCES users(id),
-    approved_at     TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
+    scheduled_at    TEXT,
+    published_at    TEXT,
+    ai_generated    INTEGER DEFAULT 0,
+    created_by      TEXT REFERENCES users(id),
+    approved_by     TEXT REFERENCES users(id),
+    approved_at     TEXT,
+    created_at      TEXT DEFAULT (datetime('now')),
+    updated_at      TEXT DEFAULT (datetime('now'))
 );
-CREATE INDEX idx_posts_user_status ON posts(user_id, status);
-CREATE INDEX idx_posts_scheduled ON posts(scheduled_at) WHERE status = 'scheduled';
+CREATE INDEX IF NOT EXISTS idx_posts_user_status ON posts(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_posts_scheduled ON posts(scheduled_at);
 
 -- Post variants per platform
-CREATE TABLE post_variants (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    post_id             UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-    platform_account_id UUID NOT NULL REFERENCES platform_accounts(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS post_variants (
+    id                  TEXT PRIMARY KEY,
+    post_id             TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    platform_account_id TEXT NOT NULL REFERENCES platform_accounts(id) ON DELETE CASCADE,
     content_override    TEXT,
-    platform_post_id    VARCHAR(255),
+    platform_post_id    TEXT,
     platform_post_url   TEXT,
-    status              VARCHAR(32) NOT NULL DEFAULT 'pending',
+    status              TEXT NOT NULL DEFAULT 'pending',
     error_message       TEXT,
-    published_at        TIMESTAMPTZ,
-    created_at          TIMESTAMPTZ DEFAULT NOW()
+    published_at        TEXT,
+    created_at          TEXT DEFAULT (datetime('now'))
 );
-CREATE INDEX idx_post_variants_post ON post_variants(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_variants_post ON post_variants(post_id);
 
 -- Media
-CREATE TABLE media (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    post_id         UUID REFERENCES posts(id) ON DELETE SET NULL,
+CREATE TABLE IF NOT EXISTS media (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    post_id         TEXT REFERENCES posts(id) ON DELETE SET NULL,
     file_url        TEXT NOT NULL,
     thumbnail_url   TEXT,
-    file_type       VARCHAR(32) NOT NULL,
-    mime_type       VARCHAR(128),
-    file_size_bytes BIGINT,
-    width           INT,
-    height          INT,
-    duration_sec    INT,
-    sort_order      INT DEFAULT 0,
-    created_at      TIMESTAMPTZ DEFAULT NOW()
+    file_type       TEXT NOT NULL,
+    mime_type       TEXT,
+    file_size_bytes INTEGER,
+    width           INTEGER,
+    height          INTEGER,
+    duration_sec    INTEGER,
+    sort_order      INTEGER DEFAULT 0,
+    created_at      TEXT DEFAULT (datetime('now'))
 );
-CREATE INDEX idx_media_post ON media(post_id);
+CREATE INDEX IF NOT EXISTS idx_media_post ON media(post_id);
 
 -- Hashtag groups
-CREATE TABLE hashtag_groups (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    name        VARCHAR(128) NOT NULL,
-    hashtags    TEXT[] NOT NULL,
-    created_at  TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS hashtag_groups (
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,
+    hashtags    TEXT NOT NULL,
+    created_at  TEXT DEFAULT (datetime('now'))
 );
 
 -- Inbox
-CREATE TABLE inbox_messages (
-    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    platform_account_id     UUID NOT NULL REFERENCES platform_accounts(id) ON DELETE CASCADE,
-    platform_message_id     VARCHAR(255) NOT NULL,
-    conversation_id         VARCHAR(255),
-    message_type            VARCHAR(32) NOT NULL,
-    sender_name             VARCHAR(255),
-    sender_username         VARCHAR(255),
+CREATE TABLE IF NOT EXISTS inbox_messages (
+    id                      TEXT PRIMARY KEY,
+    platform_account_id     TEXT NOT NULL REFERENCES platform_accounts(id) ON DELETE CASCADE,
+    platform_message_id     TEXT NOT NULL,
+    conversation_id         TEXT,
+    message_type            TEXT NOT NULL,
+    sender_name             TEXT,
+    sender_username         TEXT,
     sender_avatar_url       TEXT,
-    sender_platform_id      VARCHAR(255),
+    sender_platform_id      TEXT,
     content                 TEXT,
     media_url               TEXT,
-    parent_post_id          UUID REFERENCES posts(id),
-    is_read                 BOOLEAN DEFAULT false,
-    is_archived             BOOLEAN DEFAULT false,
-    assigned_to             UUID REFERENCES users(id),
-    platform_created_at     TIMESTAMPTZ,
-    created_at              TIMESTAMPTZ DEFAULT NOW(),
+    parent_post_id          TEXT REFERENCES posts(id),
+    is_read                 INTEGER DEFAULT 0,
+    is_archived             INTEGER DEFAULT 0,
+    assigned_to             TEXT REFERENCES users(id),
+    platform_created_at     TEXT,
+    created_at              TEXT DEFAULT (datetime('now')),
     UNIQUE(platform_account_id, platform_message_id)
 );
-CREATE INDEX idx_inbox_unread ON inbox_messages(platform_account_id, is_read) WHERE is_read = false;
+CREATE INDEX IF NOT EXISTS idx_inbox_unread ON inbox_messages(platform_account_id, is_read);
 
-CREATE TABLE inbox_replies (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    inbox_message_id    UUID NOT NULL REFERENCES inbox_messages(id),
-    user_id             UUID NOT NULL REFERENCES users(id),
+CREATE TABLE IF NOT EXISTS inbox_replies (
+    id                  TEXT PRIMARY KEY,
+    inbox_message_id    TEXT NOT NULL REFERENCES inbox_messages(id),
+    user_id             TEXT NOT NULL REFERENCES users(id),
     content             TEXT NOT NULL,
-    platform_reply_id   VARCHAR(255),
-    status              VARCHAR(32) DEFAULT 'sent',
-    created_at          TIMESTAMPTZ DEFAULT NOW()
+    platform_reply_id   TEXT,
+    status              TEXT DEFAULT 'sent',
+    created_at          TEXT DEFAULT (datetime('now'))
 );
 
 -- Analytics snapshots
-CREATE TABLE analytics_snapshots (
-    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    platform_account_id     UUID NOT NULL REFERENCES platform_accounts(id) ON DELETE CASCADE,
-    post_variant_id         UUID REFERENCES post_variants(id),
-    snapshot_date           DATE NOT NULL,
-    followers_count         INT,
-    impressions             INT DEFAULT 0,
-    reach                   INT DEFAULT 0,
-    engagements             INT DEFAULT 0,
-    likes                   INT DEFAULT 0,
-    comments                INT DEFAULT 0,
-    shares                  INT DEFAULT 0,
-    saves                   INT DEFAULT 0,
-    clicks                  INT DEFAULT 0,
-    video_views             INT DEFAULT 0,
-    created_at              TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS analytics_snapshots (
+    id                      TEXT PRIMARY KEY,
+    platform_account_id     TEXT NOT NULL REFERENCES platform_accounts(id) ON DELETE CASCADE,
+    post_variant_id         TEXT REFERENCES post_variants(id),
+    snapshot_date           TEXT NOT NULL,
+    followers_count         INTEGER,
+    impressions             INTEGER DEFAULT 0,
+    reach                   INTEGER DEFAULT 0,
+    engagements             INTEGER DEFAULT 0,
+    likes                   INTEGER DEFAULT 0,
+    comments                INTEGER DEFAULT 0,
+    shares                  INTEGER DEFAULT 0,
+    saves                   INTEGER DEFAULT 0,
+    clicks                  INTEGER DEFAULT 0,
+    video_views             INTEGER DEFAULT 0,
+    created_at              TEXT DEFAULT (datetime('now'))
 );
-CREATE INDEX idx_analytics_account_date ON analytics_snapshots(platform_account_id, snapshot_date);
+CREATE INDEX IF NOT EXISTS idx_analytics_account_date ON analytics_snapshots(platform_account_id, snapshot_date);
 
 -- Approval requests
-CREATE TABLE approval_requests (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    post_id     UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-    team_id     UUID NOT NULL REFERENCES teams(id),
-    requested_by UUID NOT NULL REFERENCES users(id),
-    reviewed_by  UUID REFERENCES users(id),
-    status       VARCHAR(32) DEFAULT 'pending',
+CREATE TABLE IF NOT EXISTS approval_requests (
+    id          TEXT PRIMARY KEY,
+    post_id     TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    team_id     TEXT NOT NULL REFERENCES teams(id),
+    requested_by TEXT NOT NULL REFERENCES users(id),
+    reviewed_by  TEXT REFERENCES users(id),
+    status       TEXT DEFAULT 'pending',
     comment      TEXT,
-    created_at   TIMESTAMPTZ DEFAULT NOW(),
-    reviewed_at  TIMESTAMPTZ
+    created_at   TEXT DEFAULT (datetime('now')),
+    reviewed_at  TEXT
+);
+
+-- Settings (key-value store for API keys and config)
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT DEFAULT (datetime('now'))
 );

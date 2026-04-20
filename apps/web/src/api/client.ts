@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: '/newswalla/api',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -16,7 +16,7 @@ api.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('newswalla_token');
-      window.location.href = '/login';
+      window.location.href = '/newswalla/login';
     }
     return Promise.reject(err);
   }

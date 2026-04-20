@@ -1,4 +1,5 @@
-import { query, queryOne, pool } from '../config/database';
+import crypto from 'crypto';
+import { db, query, queryOne, run } from '../config/database';
 
 export interface CreatePostInput {
   userId: string;
@@ -10,62 +11,55 @@ export interface CreatePostInput {
 }
 
 export async function createPost(input: CreatePostInput) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
+  const status = input.publishNow ? 'publishing' : input.scheduledAt ? 'scheduled' : 'draft';
+  const postId = crypto.randomUUID();
 
-    const status = input.publishNow ? 'publishing' : input.scheduledAt ? 'scheduled' : 'draft';
-    const post = (await client.query(
-      `INSERT INTO posts (user_id, status, content_global, scheduled_at, created_by)
-       VALUES ($1, $2, $3, $4, $1)
-       RETURNING *`,
-      [input.userId, status, input.contentGlobal, input.scheduledAt || null]
-    )).rows[0];
+  const createTx = db.transaction(() => {
+    run(
+      `INSERT INTO posts (id, user_id, status, content_global, scheduled_at, created_by)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [postId, input.userId, status, input.contentGlobal, input.scheduledAt || null, input.userId]
+    );
 
     for (const p of input.platforms) {
-      await client.query(
-        `INSERT INTO post_variants (post_id, platform_account_id, content_override)
-         VALUES ($1, $2, $3)`,
-        [post.id, p.accountId, p.contentOverride || null]
+      run(
+        `INSERT INTO post_variants (id, post_id, platform_account_id, content_override)
+         VALUES (?, ?, ?, ?)`,
+        [crypto.randomUUID(), postId, p.accountId, p.contentOverride || null]
       );
     }
 
     if (input.mediaIds?.length) {
       for (let i = 0; i < input.mediaIds.length; i++) {
-        await client.query(
-          'UPDATE media SET post_id = $1, sort_order = $2 WHERE id = $3 AND user_id = $4',
-          [post.id, i, input.mediaIds[i], input.userId]
+        run(
+          'UPDATE media SET post_id = ?, sort_order = ? WHERE id = ? AND user_id = ?',
+          [postId, i, input.mediaIds[i], input.userId]
         );
       }
     }
+  });
 
-    await client.query('COMMIT');
-    return getPostById(post.id, input.userId);
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  createTx();
+  return getPostById(postId, input.userId);
 }
 
 export async function getPostById(postId: string, userId: string) {
-  const post = await queryOne<any>(
-    'SELECT * FROM posts WHERE id = $1 AND user_id = $2',
+  const post = queryOne<any>(
+    'SELECT * FROM posts WHERE id = ? AND user_id = ?',
     [postId, userId]
   );
   if (!post) return null;
 
-  const variants = await query<any>(
+  const variants = query<any>(
     `SELECT pv.*, pa.platform, pa.platform_username, pa.page_name
      FROM post_variants pv
      JOIN platform_accounts pa ON pa.id = pv.platform_account_id
-     WHERE pv.post_id = $1`,
+     WHERE pv.post_id = ?`,
     [postId]
   );
 
-  const media = await query<any>(
-    'SELECT * FROM media WHERE post_id = $1 ORDER BY sort_order',
+  const media = query<any>(
+    'SELECT * FROM media WHERE post_id = ? ORDER BY sort_order',
     [postId]
   );
 
@@ -81,41 +75,53 @@ export async function listPosts(userId: string, filters: {
   const limit = filters.limit || 20;
   const offset = (page - 1) * limit;
 
-  let where = 'WHERE p.user_id = $1';
+  let where = 'WHERE p.user_id = ?';
   const params: any[] = [userId];
 
   if (filters.status) {
     params.push(filters.status);
-    where += ` AND p.status = $${params.length}`;
+    where += ' AND p.status = ?';
   }
 
-  const posts = await query<any>(
-    `SELECT p.*,
-       json_agg(DISTINCT jsonb_build_object(
-         'id', pv.id, 'platform', pa.platform, 'platformUsername', pa.platform_username,
-         'contentOverride', pv.content_override, 'status', pv.status
-       )) FILTER (WHERE pv.id IS NOT NULL) as variants
+  // Get posts
+  const posts = query<any>(
+    `SELECT p.*
      FROM posts p
-     LEFT JOIN post_variants pv ON pv.post_id = p.id
-     LEFT JOIN platform_accounts pa ON pa.id = pv.platform_account_id
      ${where}
-     GROUP BY p.id
      ORDER BY COALESCE(p.scheduled_at, p.created_at) DESC
-     LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+     LIMIT ? OFFSET ?`,
     [...params, limit, offset]
   );
 
-  const countResult = await queryOne<any>(
-    `SELECT COUNT(*) FROM posts p ${where}`,
+  // Get variants for each post (aggregation done in JS)
+  const postsWithVariants = posts.map(p => {
+    const variants = query<any>(
+      `SELECT pv.id, pa.platform, pa.platform_username, pv.content_override, pv.status
+       FROM post_variants pv
+       JOIN platform_accounts pa ON pa.id = pv.platform_account_id
+       WHERE pv.post_id = ?`,
+      [p.id]
+    );
+    return {
+      ...formatPostRow(p),
+      variants: variants.map(v => ({
+        id: v.id,
+        platform: v.platform,
+        platformUsername: v.platform_username,
+        contentOverride: v.content_override,
+        status: v.status,
+      })),
+    };
+  });
+
+  const countResult = queryOne<any>(
+    `SELECT COUNT(*) as count FROM posts p ${where}`,
     params
   );
 
   return {
-    posts: posts.map(p => ({
-      ...formatPostRow(p),
-      variants: p.variants || [],
-    })),
-    total: parseInt(countResult?.count || '0'),
+    posts: postsWithVariants,
+    total: countResult?.count || 0,
     page,
     limit,
   };
@@ -128,26 +134,25 @@ export async function updatePost(postId: string, userId: string, updates: {
 }) {
   const sets: string[] = [];
   const params: any[] = [];
-  let idx = 1;
 
   if (updates.contentGlobal !== undefined) {
-    sets.push(`content_global = $${idx++}`);
+    sets.push('content_global = ?');
     params.push(updates.contentGlobal);
   }
   if (updates.scheduledAt !== undefined) {
-    sets.push(`scheduled_at = $${idx++}`);
+    sets.push('scheduled_at = ?');
     params.push(updates.scheduledAt);
   }
   if (updates.status) {
-    sets.push(`status = $${idx++}`);
+    sets.push('status = ?');
     params.push(updates.status);
   }
 
-  sets.push(`updated_at = NOW()`);
+  sets.push("updated_at = datetime('now')");
 
   params.push(postId, userId);
-  await queryOne(
-    `UPDATE posts SET ${sets.join(', ')} WHERE id = $${idx++} AND user_id = $${idx}`,
+  run(
+    `UPDATE posts SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`,
     params
   );
 
@@ -155,36 +160,44 @@ export async function updatePost(postId: string, userId: string, updates: {
 }
 
 export async function deletePost(postId: string, userId: string) {
-  const result = await queryOne<any>(
-    'DELETE FROM posts WHERE id = $1 AND user_id = $2 RETURNING id',
+  const result = queryOne<any>(
+    'SELECT id FROM posts WHERE id = ? AND user_id = ?',
     [postId, userId]
   );
   if (!result) throw Object.assign(new Error('Post not found'), { status: 404 });
+  run('DELETE FROM posts WHERE id = ? AND user_id = ?', [postId, userId]);
 }
 
 export async function getCalendarPosts(userId: string, start: string, end: string) {
-  const posts = await query<any>(
-    `SELECT p.id, p.content_global, p.status, p.scheduled_at, p.published_at,
-       array_agg(DISTINCT pa.platform) as platforms
+  const posts = query<any>(
+    `SELECT p.id, p.content_global, p.status, p.scheduled_at, p.published_at, p.created_at
      FROM posts p
-     LEFT JOIN post_variants pv ON pv.post_id = p.id
-     LEFT JOIN platform_accounts pa ON pa.id = pv.platform_account_id
-     WHERE p.user_id = $1
-       AND COALESCE(p.scheduled_at, p.created_at) >= $2
-       AND COALESCE(p.scheduled_at, p.created_at) <= $3
-     GROUP BY p.id
+     WHERE p.user_id = ?
+       AND COALESCE(p.scheduled_at, p.created_at) >= ?
+       AND COALESCE(p.scheduled_at, p.created_at) <= ?
      ORDER BY COALESCE(p.scheduled_at, p.created_at)`,
     [userId, start, end]
   );
 
-  return posts.map(p => ({
-    id: p.id,
-    title: (p.content_global || '').substring(0, 60) + ((p.content_global?.length || 0) > 60 ? '...' : ''),
-    start: p.scheduled_at || p.created_at,
-    end: p.scheduled_at || p.created_at,
-    status: p.status,
-    platforms: p.platforms?.filter(Boolean) || [],
-  }));
+  return posts.map(p => {
+    // Get platforms for each post in JS
+    const platforms = query<any>(
+      `SELECT DISTINCT pa.platform
+       FROM post_variants pv
+       JOIN platform_accounts pa ON pa.id = pv.platform_account_id
+       WHERE pv.post_id = ?`,
+      [p.id]
+    ).map(r => r.platform);
+
+    return {
+      id: p.id,
+      title: (p.content_global || '').substring(0, 60) + ((p.content_global?.length || 0) > 60 ? '...' : ''),
+      start: p.scheduled_at || p.created_at,
+      end: p.scheduled_at || p.created_at,
+      status: p.status,
+      platforms,
+    };
+  });
 }
 
 function formatPostRow(row: any) {
@@ -196,7 +209,7 @@ function formatPostRow(row: any) {
     contentGlobal: row.content_global,
     scheduledAt: row.scheduled_at,
     publishedAt: row.published_at,
-    aiGenerated: row.ai_generated,
+    aiGenerated: !!row.ai_generated,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

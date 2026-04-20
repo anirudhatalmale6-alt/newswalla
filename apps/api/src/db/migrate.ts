@@ -1,52 +1,52 @@
 import fs from 'fs';
 import path from 'path';
-import { pool } from '../config/database';
+import { db } from '../config/database';
 import { logger } from '../utils/logger';
 
-async function migrate() {
-  const client = await pool.connect();
-  try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS migrations (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) UNIQUE NOT NULL,
-        applied_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
+function migrate() {
+  // Create migrations tracking table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS migrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      applied_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
 
-    const applied = await client.query('SELECT name FROM migrations ORDER BY id');
-    const appliedNames = new Set(applied.rows.map((r: any) => r.name));
+  const applied = db.prepare('SELECT name FROM migrations ORDER BY id').all() as { name: string }[];
+  const appliedNames = new Set(applied.map(r => r.name));
 
-    const migrationsDir = path.join(__dirname, 'migrations');
-    const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
+  const migrationsDir = path.join(__dirname, 'migrations');
+  const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
 
-    for (const file of files) {
-      if (appliedNames.has(file)) {
-        logger.info(`Skipping ${file} (already applied)`);
-        continue;
-      }
-
-      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
-      await client.query('BEGIN');
-      try {
-        await client.query(sql);
-        await client.query('INSERT INTO migrations (name) VALUES ($1)', [file]);
-        await client.query('COMMIT');
-        logger.info(`Applied migration: ${file}`);
-      } catch (err) {
-        await client.query('ROLLBACK');
-        throw err;
-      }
+  for (const file of files) {
+    if (appliedNames.has(file)) {
+      logger.info(`Skipping ${file} (already applied)`);
+      continue;
     }
 
-    logger.info('All migrations applied');
-  } finally {
-    client.release();
-    await pool.end();
+    const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
+
+    const runMigration = db.transaction(() => {
+      db.exec(sql);
+      db.prepare('INSERT INTO migrations (name) VALUES (?)').run(file);
+    });
+
+    try {
+      runMigration();
+      logger.info(`Applied migration: ${file}`);
+    } catch (err) {
+      logger.error({ err }, `Failed to apply migration: ${file}`);
+      throw err;
+    }
   }
+
+  logger.info('All migrations applied');
 }
 
-migrate().catch((err) => {
+try {
+  migrate();
+} catch (err) {
   logger.error({ err }, 'Migration failed');
   process.exit(1);
-});
+}

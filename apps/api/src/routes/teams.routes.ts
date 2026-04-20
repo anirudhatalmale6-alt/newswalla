@@ -1,7 +1,8 @@
+import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth';
-import { query, queryOne, pool } from '../config/database';
+import { db, query, queryOne, run } from '../config/database';
 
 const router = Router();
 router.use(authMiddleware);
@@ -9,25 +10,25 @@ router.use(authMiddleware);
 router.post('/', async (req: Request, res: Response) => {
   try {
     const { name } = z.object({ name: z.string().min(1) }).parse(req.body);
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const team = (await client.query(
-        'INSERT INTO teams (name, owner_id) VALUES ($1, $2) RETURNING *',
-        [name, req.user!.userId]
-      )).rows[0];
-      await client.query(
-        `INSERT INTO team_members (team_id, user_id, role, can_publish) VALUES ($1, $2, 'owner', true)`,
-        [team.id, req.user!.userId]
+
+    const teamId = crypto.randomUUID();
+    const memberId = crypto.randomUUID();
+
+    const createTeam = db.transaction(() => {
+      run(
+        'INSERT INTO teams (id, name, owner_id) VALUES (?, ?, ?)',
+        [teamId, name, req.user!.userId]
       );
-      await client.query('COMMIT');
-      res.status(201).json(team);
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+      run(
+        `INSERT INTO team_members (id, team_id, user_id, role, can_publish) VALUES (?, ?, ?, 'owner', 1)`,
+        [memberId, teamId, req.user!.userId]
+      );
+    });
+
+    createTeam();
+
+    const team = queryOne('SELECT * FROM teams WHERE id = ?', [teamId]);
+    res.status(201).json(team);
   } catch (err: any) {
     res.status(err.status || 400).json({ error: err.message });
   }
@@ -35,11 +36,11 @@ router.post('/', async (req: Request, res: Response) => {
 
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const teams = await query(
+    const teams = query(
       `SELECT t.*, tm.role as my_role
        FROM teams t
        JOIN team_members tm ON tm.team_id = t.id
-       WHERE tm.user_id = $1`,
+       WHERE tm.user_id = ?`,
       [req.user!.userId]
     );
     res.json(teams);
@@ -50,19 +51,19 @@ router.get('/', async (req: Request, res: Response) => {
 
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const team = await queryOne(
+    const team = queryOne(
       `SELECT t.* FROM teams t
        JOIN team_members tm ON tm.team_id = t.id
-       WHERE t.id = $1 AND tm.user_id = $2`,
+       WHERE t.id = ? AND tm.user_id = ?`,
       [req.params.id, req.user!.userId]
     );
     if (!team) { res.status(404).json({ error: 'Team not found' }); return; }
 
-    const members = await query(
+    const members = query(
       `SELECT tm.*, u.full_name, u.email, u.avatar_url
        FROM team_members tm
        JOIN users u ON u.id = tm.user_id
-       WHERE tm.team_id = $1`,
+       WHERE tm.team_id = ?`,
       [req.params.id]
     );
     res.json({ ...team, members });
@@ -78,14 +79,25 @@ router.post('/:id/invite', async (req: Request, res: Response) => {
       role: z.enum(['admin', 'editor', 'member']).default('member'),
     }).parse(req.body);
 
-    const user = await queryOne<any>('SELECT id FROM users WHERE email = $1', [email]);
+    const user = queryOne<any>('SELECT id FROM users WHERE email = ?', [email]);
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
 
-    await queryOne(
-      `INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3)
-       ON CONFLICT (team_id, user_id) DO UPDATE SET role = $3`,
-      [req.params.id, user.id, role]
+    // SQLite upsert
+    const existing = queryOne(
+      'SELECT id FROM team_members WHERE team_id = ? AND user_id = ?',
+      [req.params.id, user.id]
     );
+    if (existing) {
+      run(
+        'UPDATE team_members SET role = ? WHERE team_id = ? AND user_id = ?',
+        [role, req.params.id, user.id]
+      );
+    } else {
+      run(
+        'INSERT INTO team_members (id, team_id, user_id, role) VALUES (?, ?, ?, ?)',
+        [crypto.randomUUID(), req.params.id, user.id, role]
+      );
+    }
     res.json({ success: true });
   } catch (err: any) {
     res.status(err.status || 400).json({ error: err.message });
