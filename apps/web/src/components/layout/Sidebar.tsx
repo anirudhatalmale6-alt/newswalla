@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, PenSquare, Calendar, Inbox, BarChart3,
   Users, Settings, Zap, LogOut, Shield, UserCog, Palette, CreditCard,
-  Bell, CheckSquare
+  Bell, CheckSquare, Languages, MessageSquare
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
@@ -40,7 +40,9 @@ export default function Sidebar() {
     { to: '/admin/approvals', icon: CheckSquare, label: 'Approvals' },
     { to: '/admin/users', icon: UserCog, label: t('userManagement', lang) },
     { to: '/admin/theme', icon: Palette, label: t('colorTheme', lang) },
+    { to: '/admin/languages', icon: Languages, label: 'Languages' },
     { to: '/admin/subscription', icon: CreditCard, label: t('subscription', lang) },
+    { to: '/admin/messages', icon: MessageSquare, label: 'Support Messages' },
   ];
 
   return (

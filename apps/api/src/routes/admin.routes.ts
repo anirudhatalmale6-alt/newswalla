@@ -107,4 +107,91 @@ router.put('/theme', async (req: Request, res: Response) => {
   }
 });
 
+// ============ LANGUAGES MANAGEMENT ============
+
+// GET /api/admin/languages
+router.get('/languages', async (req: Request, res: Response) => {
+  try {
+    const langs = settingsService.getSetting('custom_languages');
+    if (langs) {
+      res.json(JSON.parse(langs));
+    } else {
+      // Default languages
+      res.json([
+        { code: 'en', name: 'English', nativeName: 'English', dir: 'ltr', font: '', enabled: true },
+        { code: 'ur', name: 'Urdu', nativeName: 'اردو', dir: 'rtl', font: 'Noto Nastaliq Urdu', enabled: true },
+        { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', dir: 'ltr', font: '', enabled: true },
+        { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ', dir: 'ltr', font: '', enabled: true },
+        { code: 'sv', name: 'Swedish', nativeName: 'Svenska', dir: 'ltr', font: '', enabled: true },
+        { code: 'phr', name: 'Pahari', nativeName: 'پہاڑی', dir: 'rtl', font: '', enabled: true },
+        { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી', dir: 'ltr', font: '', enabled: true },
+        { code: 'ks', name: 'Kashmiri', nativeName: 'کٲشُر', dir: 'rtl', font: '', enabled: true },
+        { code: 'fa', name: 'Persian', nativeName: 'فارسی', dir: 'rtl', font: '', enabled: true },
+        { code: 'ar', name: 'Arabic', nativeName: 'العربية', dir: 'rtl', font: '', enabled: true },
+      ]);
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/languages
+router.put('/languages', async (req: Request, res: Response) => {
+  try {
+    const { languages } = req.body;
+    settingsService.setSetting('custom_languages', JSON.stringify(languages));
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ CONTACT SUPPORT ============
+
+// GET /api/admin/contact-messages
+router.get('/contact-messages', async (req: Request, res: Response) => {
+  try {
+    const { query: dbQuery } = await import('../config/database');
+    const messages = dbQuery<any>('SELECT * FROM contact_messages ORDER BY created_at DESC', []);
+    res.json(messages);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ SUBSCRIPTION / ALLOWED USERS ============
+
+// GET /api/admin/subscription-settings
+router.get('/subscription-settings', async (req: Request, res: Response) => {
+  try {
+    const maxUsers = settingsService.getSetting('max_allowed_users') || '5';
+    const freePostLimit = settingsService.getSetting('free_post_limit') || '5';
+    const freeAccountLimit = settingsService.getSetting('free_account_limit') || '2';
+    const proPrice = settingsService.getSetting('pro_price') || '5';
+    const teamPrice = settingsService.getSetting('team_price') || '10';
+    const teamMaxUsers = settingsService.getSetting('team_max_users') || '5';
+    const registrationOpen = settingsService.getSetting('registration_open') || 'true';
+    res.json({ maxUsers, freePostLimit, freeAccountLimit, proPrice, teamPrice, teamMaxUsers, registrationOpen });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/subscription-settings
+router.put('/subscription-settings', async (req: Request, res: Response) => {
+  try {
+    const { maxUsers, freePostLimit, freeAccountLimit, proPrice, teamPrice, teamMaxUsers, registrationOpen } = req.body;
+    if (maxUsers !== undefined) settingsService.setSetting('max_allowed_users', String(maxUsers));
+    if (freePostLimit !== undefined) settingsService.setSetting('free_post_limit', String(freePostLimit));
+    if (freeAccountLimit !== undefined) settingsService.setSetting('free_account_limit', String(freeAccountLimit));
+    if (proPrice !== undefined) settingsService.setSetting('pro_price', String(proPrice));
+    if (teamPrice !== undefined) settingsService.setSetting('team_price', String(teamPrice));
+    if (teamMaxUsers !== undefined) settingsService.setSetting('team_max_users', String(teamMaxUsers));
+    if (registrationOpen !== undefined) settingsService.setSetting('registration_open', String(registrationOpen));
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

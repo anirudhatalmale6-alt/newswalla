@@ -11,6 +11,7 @@ import mediaRoutes from './media.routes';
 import settingsRoutes from './settings.routes';
 import adminRoutes from './admin.routes';
 import approvalRoutes from './approval.routes';
+import contactRoutes from './contact.routes';
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/media', mediaRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/admin', adminRoutes);
 router.use('/approvals', approvalRoutes);
+router.use('/contact', contactRoutes);
 
 export default router;

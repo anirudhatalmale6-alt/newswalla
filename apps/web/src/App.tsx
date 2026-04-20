@@ -17,6 +17,10 @@ import AdminUsers from './pages/AdminUsers';
 import AdminTheme from './pages/AdminTheme';
 import AdminSubscription from './pages/AdminSubscription';
 import AdminApprovals from './pages/AdminApprovals';
+import AdminLanguages from './pages/AdminLanguages';
+import AdminContactMessages from './pages/AdminContactMessages';
+import ContactSupport from './pages/ContactSupport';
+import ChatBot from './components/ChatBot';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuthStore();
@@ -55,6 +59,7 @@ export default function App() {
         <Route path="/" element={<PublicOnly><Landing /></PublicOnly>} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/contact" element={<ContactSupport />} />
 
         {/* Protected app routes */}
         <Route
@@ -75,8 +80,11 @@ export default function App() {
           <Route path="/admin/theme" element={<AdminRoute><AdminTheme /></AdminRoute>} />
           <Route path="/admin/subscription" element={<AdminRoute><AdminSubscription /></AdminRoute>} />
           <Route path="/admin/approvals" element={<AdminRoute><AdminApprovals /></AdminRoute>} />
+          <Route path="/admin/languages" element={<AdminRoute><AdminLanguages /></AdminRoute>} />
+          <Route path="/admin/messages" element={<AdminRoute><AdminContactMessages /></AdminRoute>} />
         </Route>
       </Routes>
+      <ChatBot />
     </BrowserRouter>
   );
 }

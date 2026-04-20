@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CreditCard, Check, Zap, Users, Star } from 'lucide-react';
+import { CreditCard, Check, Zap, Users, Star, Settings2 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { t, LangCode } from '../i18n/translations';
 import api from '../api/client';
@@ -14,8 +14,21 @@ export default function AdminSubscription() {
   const [teamPriceId, setTeamPriceId] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Subscription settings
+  const [subSettings, setSubSettings] = useState({
+    maxUsers: '50',
+    freePostLimit: '5',
+    freeAccountLimit: '2',
+    proPrice: '5',
+    teamPrice: '10',
+    teamMaxUsers: '5',
+    registrationOpen: 'true',
+  });
+  const [savingSub, setSavingSub] = useState(false);
+
   useEffect(() => {
     loadStripeSettings();
+    loadSubSettings();
   }, []);
 
   const loadStripeSettings = async () => {
@@ -26,6 +39,22 @@ export default function AdminSubscription() {
       if (keys.stripe_price_id) setProPriceId(keys.stripe_price_id);
       if (keys.stripe_team_price_id) setTeamPriceId(keys.stripe_team_price_id);
     } catch { /* not configured */ }
+  };
+
+  const loadSubSettings = async () => {
+    try {
+      const { data } = await api.get('/admin/subscription-settings');
+      setSubSettings(data);
+    } catch { /* not configured */ }
+  };
+
+  const handleSaveSubSettings = async () => {
+    setSavingSub(true);
+    try {
+      await api.put('/admin/subscription-settings', subSettings);
+      toast.success('Subscription settings saved!');
+    } catch { toast.error('Failed to save'); }
+    finally { setSavingSub(false); }
   };
 
   const handleSaveStripe = async () => {
@@ -185,6 +214,91 @@ export default function AdminSubscription() {
           className="px-6 py-2.5 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
         >
           {saving ? 'Saving...' : t('saveChanges', lang)}
+        </button>
+      </div>
+      {/* Subscription Settings */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Settings2 className="w-5 h-5 text-gray-700" />
+          <h3 className="text-lg font-bold text-gray-900">Subscription Settings</h3>
+        </div>
+        <p className="text-sm text-gray-500">Control registration, user limits, and plan pricing.</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Max Allowed Users (Total)</label>
+            <input
+              type="number"
+              value={subSettings.maxUsers}
+              onChange={e => setSubSettings({ ...subSettings, maxUsers: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Free Plan - Posts/Month</label>
+            <input
+              type="number"
+              value={subSettings.freePostLimit}
+              onChange={e => setSubSettings({ ...subSettings, freePostLimit: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Free Plan - Max Accounts</label>
+            <input
+              type="number"
+              value={subSettings.freeAccountLimit}
+              onChange={e => setSubSettings({ ...subSettings, freeAccountLimit: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Pro Price ($/month)</label>
+            <input
+              type="number"
+              value={subSettings.proPrice}
+              onChange={e => setSubSettings({ ...subSettings, proPrice: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Team Price ($/month)</label>
+            <input
+              type="number"
+              value={subSettings.teamPrice}
+              onChange={e => setSubSettings({ ...subSettings, teamPrice: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Team Max Users</label>
+            <input
+              type="number"
+              value={subSettings.teamMaxUsers}
+              onChange={e => setSubSettings({ ...subSettings, teamMaxUsers: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={subSettings.registrationOpen === 'true'}
+              onChange={e => setSubSettings({ ...subSettings, registrationOpen: e.target.checked ? 'true' : 'false' })}
+              className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            />
+            Registration Open (allow new users to sign up)
+          </label>
+        </div>
+        <button
+          onClick={handleSaveSubSettings}
+          disabled={savingSub}
+          className="px-6 py-2.5 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
+        >
+          {savingSub ? 'Saving...' : 'Save Subscription Settings'}
         </button>
       </div>
     </div>
