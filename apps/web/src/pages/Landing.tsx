@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import {
   Zap, Calendar, BarChart3, Users, Globe, Video, Sparkles, Shield, Clock,
   CheckCircle, ArrowRight, Star, MessageSquare, Layers, Palette, Languages,
-  ChevronDown, ChevronUp, Lock, Check, X as XIcon
+  ChevronDown, ChevronUp, Lock, Check, X as XIcon, Bell
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -41,7 +41,7 @@ const steps = [
 const comparison = [
   { feature: 'Starting Price', nw: 'Free', buffer: '$6/mo', hootsuite: '$99/mo', later: '$25/mo' },
   { feature: 'Pro Plan', nw: '$5/mo', buffer: '$6/mo', hootsuite: '$99/mo', later: '$25/mo' },
-  { feature: 'Team Plan (5 users)', nw: '$15/mo', buffer: '$12/mo', hootsuite: '$249/mo', later: '$80/mo' },
+  { feature: 'Team Plan (5 users)', nw: '$10/mo', buffer: '$12/mo', hootsuite: '$249/mo', later: '$80/mo' },
   { feature: 'Social Platforms', nw: '6+', buffer: '6', hootsuite: '10+', later: '4' },
   { feature: 'Facebook Pages', nw: true, buffer: true, hootsuite: true, later: false },
   { feature: 'Facebook Groups', nw: true, buffer: false, hootsuite: true, later: false },
@@ -326,8 +326,8 @@ export default function Landing() {
                 <Users className="w-3 h-3" /> Best Value
               </div>
               <h3 className="text-xl font-bold text-gray-900">Team</h3>
-              <p className="text-4xl font-extrabold text-gray-900 mt-4">$15<span className="text-lg font-normal text-gray-500">/mo</span></p>
-              <p className="text-purple-600 text-sm mt-2 font-medium">$3/user - for teams of 5</p>
+              <p className="text-4xl font-extrabold text-gray-900 mt-4">$10<span className="text-lg font-normal text-gray-500">/mo</span></p>
+              <p className="text-purple-600 text-sm mt-2 font-medium">$2/user - for teams of 5</p>
               <ul className="mt-6 space-y-3">
                 {['Everything in Pro', '5 team members', 'Team collaboration', 'Approval workflows', 'Shared content calendar', 'Role-based access', 'Dedicated support'].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
@@ -367,15 +367,98 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Approval Workflow Feature */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium mb-4">
+                <Shield className="w-4 h-4" /> Team Feature
+              </div>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">
+                Editor & Admin Approval Workflow
+              </h2>
+              <p className="text-gray-600 mt-4 text-lg leading-relaxed">
+                Keep your brand safe with a powerful two-level approval system.
+                Editors create and schedule content, while Admins review and approve before anything goes live.
+              </p>
+              <ul className="mt-8 space-y-4">
+                {[
+                  { title: 'Editors Upload & Schedule', desc: 'Team members create posts, select platforms, and set schedules. Posts are held for review.' },
+                  { title: 'Admins Approve or Reject', desc: 'Admins receive instant notifications. Review content, approve to publish, or reject with feedback.' },
+                  { title: 'Real-Time Notifications', desc: 'Both editors and admins get notified at every step. Never miss an approval request.' },
+                  { title: 'Full Audit Trail', desc: 'Track who submitted, who approved, and when. Complete transparency for your team.' },
+                ].map(item => (
+                  <li key={item.title} className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-gray-900">{item.title}</p>
+                      <p className="text-sm text-gray-500">{item.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl p-8 border border-purple-200">
+              <div className="space-y-4">
+                {/* Mock approval cards */}
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-bold">E</div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Editor submitted a post</p>
+                        <p className="text-xs text-gray-400">2 minutes ago</p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">Pending</span>
+                  </div>
+                  <p className="mt-3 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">"Check out our latest product launch! Available now on..."</p>
+                  <div className="mt-3 flex gap-2">
+                    <button className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg">Approve</button>
+                    <button className="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg">Reject</button>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-sm font-bold">A</div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Admin approved post</p>
+                        <p className="text-xs text-gray-400">5 minutes ago</p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">Approved</span>
+                  </div>
+                  <p className="mt-3 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">"Great content! Approved for publishing on all channels."</p>
+                </div>
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 opacity-70">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-sm font-bold">N</div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Notification sent to editor</p>
+                        <p className="text-xs text-gray-400">5 minutes ago</p>
+                      </div>
+                    </div>
+                    <Bell className="w-4 h-4 text-purple-500" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Testimonials */}
-      <section id="testimonials" className="py-24 bg-white">
+      <section id="testimonials" className="py-24 bg-gray-50">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">Loved by Social Media Managers</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {testimonials.map((t, i) => (
-              <div key={i} className="bg-gray-50 rounded-2xl p-8 border border-gray-200">
+              <div key={i} className="bg-white rounded-2xl p-8 border border-gray-200">
                 <div className="flex gap-1 mb-4">
                   {Array.from({ length: t.stars }).map((_, j) => (
                     <Star key={j} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
@@ -398,7 +481,7 @@ export default function Landing() {
       </section>
 
       {/* FAQ */}
-      <section className="py-24 bg-gray-50">
+      <section className="py-24 bg-white">
         <div className="max-w-3xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">Frequently Asked Questions</h2>
@@ -418,6 +501,43 @@ export default function Landing() {
                     <p className="text-sm text-gray-600 leading-relaxed">{faq.a}</p>
                   </div>
                 )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Tutorials */}
+      <section className="py-24 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">See How It Works</h2>
+            <p className="text-gray-600 mt-4 text-lg">Step-by-step screenshots showing you how easy it is to use NewsWalla.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { num: 1, title: 'Dashboard Overview', desc: 'Your central hub showing all scheduled posts, analytics, and quick actions.' },
+              { num: 2, title: 'Connect Accounts', desc: 'Add Facebook pages, YouTube channels, Instagram and more in settings.' },
+              { num: 3, title: 'Compose a Post', desc: 'Write content, add media, select platforms and schedule for the best time.' },
+              { num: 4, title: 'Content Calendar', desc: 'Drag and drop posts on the visual calendar. See your week at a glance.' },
+              { num: 5, title: 'AI Content Generator', desc: 'Enter a topic and get AI-generated captions optimized for each platform.' },
+              { num: 6, title: 'Approval Workflow', desc: 'Editors submit posts. Admins review, approve, or reject with comments.' },
+              { num: 7, title: 'Analytics Dashboard', desc: 'Track engagement, reach, and growth across all connected platforms.' },
+              { num: 8, title: 'Team Management', desc: 'Add team members, assign roles, and manage access permissions.' },
+            ].map(tut => (
+              <div key={tut.num} className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="aspect-video bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full bg-blue-600 text-white text-lg font-bold flex items-center justify-center mx-auto mb-2">
+                      {tut.num}
+                    </div>
+                    <p className="text-xs text-blue-600 font-medium">Screenshot</p>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="text-sm font-bold text-gray-900">{tut.title}</h3>
+                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">{tut.desc}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -498,8 +618,9 @@ export default function Landing() {
               </ul>
             </div>
           </div>
-          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-sm text-gray-500">
-            &copy; {new Date().getFullYear()} NewsWalla. All rights reserved.
+          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-sm text-gray-500 space-y-1">
+            <p>&copy; {new Date().getFullYear()} NewsWalla. All rights reserved.</p>
+            <p className="text-gray-600">Developed by Bergman Coding AB, Sweden</p>
           </div>
         </div>
       </footer>

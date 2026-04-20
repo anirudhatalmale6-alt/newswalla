@@ -10,6 +10,7 @@ import teamsRoutes from './teams.routes';
 import mediaRoutes from './media.routes';
 import settingsRoutes from './settings.routes';
 import adminRoutes from './admin.routes';
+import approvalRoutes from './approval.routes';
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use('/teams', teamsRoutes);
 router.use('/media', mediaRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/admin', adminRoutes);
+router.use('/approvals', approvalRoutes);
 
 export default router;

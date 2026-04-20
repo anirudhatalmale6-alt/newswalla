@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth';
 import * as postService from '../services/post.service';
+import * as approvalService from '../services/approval.service';
+import { queryOne } from '../config/database';
 
 const router = Router();
 router.use(authMiddleware);
@@ -39,11 +41,31 @@ router.get('/', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const input = createPostSchema.parse(req.body);
-    const post = await postService.createPost({
-      userId: req.user!.userId,
-      ...input,
-    });
-    res.status(201).json(post);
+    const user = queryOne<any>('SELECT role FROM users WHERE id = ?', [req.user!.userId]);
+    const isEditor = user?.role === 'user'; // non-admin users are editors
+
+    // Editors: create post as pending_approval, notify admins
+    if (isEditor && (input.publishNow || input.scheduledAt)) {
+      const post = await postService.createPost({
+        userId: req.user!.userId,
+        ...input,
+        publishNow: false, // override - editors can't publish directly
+      });
+      // Override status to pending_approval
+      const { run: dbRun } = await import('../config/database');
+      dbRun("UPDATE posts SET status = 'pending_approval' WHERE id = ?", [post.id]);
+
+      // Create approval request and notify admins
+      approvalService.createApprovalRequest(post.id, req.user!.userId);
+
+      res.status(201).json({ ...post, status: 'pending_approval', needsApproval: true });
+    } else {
+      const post = await postService.createPost({
+        userId: req.user!.userId,
+        ...input,
+      });
+      res.status(201).json(post);
+    }
   } catch (err: any) {
     res.status(err.status || 400).json({ error: err.message });
   }

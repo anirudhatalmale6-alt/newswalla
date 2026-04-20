@@ -1,14 +1,30 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, PenSquare, Calendar, Inbox, BarChart3,
-  Users, Settings, Zap, LogOut, Shield, UserCog, Palette, CreditCard
+  Users, Settings, Zap, LogOut, Shield, UserCog, Palette, CreditCard,
+  Bell, CheckSquare
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { t, LangCode } from '../../i18n/translations';
+import api from '../../api/client';
 
 export default function Sidebar() {
   const { user, logout, isAdmin } = useAuthStore();
   const lang = (user?.language || 'en') as LangCode;
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const { data } = await api.get('/approvals/notifications');
+        setUnreadCount(data.unreadCount || 0);
+      } catch { /* ignore */ }
+    };
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const nav = [
     { to: '/dashboard', icon: LayoutDashboard, label: t('dashboard', lang) },
@@ -21,6 +37,7 @@ export default function Sidebar() {
   ];
 
   const adminNav = [
+    { to: '/admin/approvals', icon: CheckSquare, label: 'Approvals' },
     { to: '/admin/users', icon: UserCog, label: t('userManagement', lang) },
     { to: '/admin/theme', icon: Palette, label: t('colorTheme', lang) },
     { to: '/admin/subscription', icon: CreditCard, label: t('subscription', lang) },
@@ -92,6 +109,14 @@ export default function Sidebar() {
             <p className="text-sm font-medium text-gray-900 truncate">{user?.fullName}</p>
             <p className="text-xs text-gray-500 truncate">{user?.email}</p>
           </div>
+          <NavLink to={isAdmin() ? '/admin/approvals' : '/dashboard'} className="relative p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+            <Bell className="w-5 h-5 text-gray-400" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center min-w-[18px] h-[18px]">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </NavLink>
         </div>
         <button
           onClick={logout}

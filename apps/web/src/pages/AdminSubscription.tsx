@@ -110,8 +110,8 @@ export default function AdminSubscription() {
             <Users className="w-5 h-5 text-purple-600" />
             <h3 className="text-lg font-bold text-gray-900">Team</h3>
           </div>
-          <p className="text-3xl font-bold text-gray-900 mt-2">$15<span className="text-sm font-normal text-gray-500">{t('perMonth', lang)}</span></p>
-          <p className="text-xs text-purple-600 font-medium mt-1">$3 per user / month</p>
+          <p className="text-3xl font-bold text-gray-900 mt-2">$10<span className="text-sm font-normal text-gray-500">{t('perMonth', lang)}</span></p>
+          <p className="text-xs text-purple-600 font-medium mt-1">$2 per user / month</p>
           <ul className="mt-4 space-y-2.5">
             {[
               'Everything in Pro',
@@ -133,7 +133,7 @@ export default function AdminSubscription() {
       {/* Stripe Configuration */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <h3 className="text-lg font-bold text-gray-900">Stripe Configuration</h3>
-        <p className="text-sm text-gray-500">Configure Stripe to enable paid subscriptions. Create two products in your Stripe dashboard: Pro ($5/month) and Team ($15/month for 5 users).</p>
+        <p className="text-sm text-gray-500">Configure Stripe to enable paid subscriptions. Create two products in your Stripe dashboard: Pro ($5/month) and Team ($10/month for 5 users).</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -169,7 +169,7 @@ export default function AdminSubscription() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Team Price ID ($15/month)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Team Price ID ($10/month)</label>
             <input
               type="text"
               value={teamPriceId}

@@ -16,6 +16,7 @@ import Settings from './pages/Settings';
 import AdminUsers from './pages/AdminUsers';
 import AdminTheme from './pages/AdminTheme';
 import AdminSubscription from './pages/AdminSubscription';
+import AdminApprovals from './pages/AdminApprovals';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuthStore();
@@ -73,6 +74,7 @@ export default function App() {
           <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
           <Route path="/admin/theme" element={<AdminRoute><AdminTheme /></AdminRoute>} />
           <Route path="/admin/subscription" element={<AdminRoute><AdminSubscription /></AdminRoute>} />
+          <Route path="/admin/approvals" element={<AdminRoute><AdminApprovals /></AdminRoute>} />
         </Route>
       </Routes>
     </BrowserRouter>
