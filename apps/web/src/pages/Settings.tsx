@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
-import { User, Link2, Globe, Key, Eye, EyeOff, Save, CheckCircle, AlertCircle } from 'lucide-react';
+import { User, Link2, Globe, Key, Eye, EyeOff, Save, CheckCircle, AlertCircle, Languages } from 'lucide-react';
+import { t, LangCode, languages } from '../i18n/translations';
+import { themes, applyTheme } from '../i18n/themes';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 
@@ -66,16 +68,24 @@ const apiKeyConfigs: ApiKeyConfig[] = [
 ];
 
 export default function Settings() {
-  const { user } = useAuthStore();
+  const { user, isAdmin, updateUser } = useAuthStore();
+  const lang = (user?.language || 'en') as LangCode;
+  const admin = isAdmin();
   const [tab, setTab] = useState<'profile' | 'connections' | 'apikeys'>('profile');
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
   const [savedKeys, setSavedKeys] = useState<Record<string, boolean>>({});
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   const [loadingKeys, setLoadingKeys] = useState(false);
+  const [profileData, setProfileData] = useState({
+    fullName: user?.fullName || '',
+    timezone: user?.timezone || 'UTC',
+    language: user?.language || 'en',
+    theme: user?.theme || 'blue',
+  });
 
   useEffect(() => {
-    if (tab === 'apikeys') {
+    if (tab === 'apikeys' && admin) {
       loadApiKeys();
     }
   }, [tab]);
@@ -90,11 +100,8 @@ export default function Settings() {
         configured[k] = !!(v as string);
       });
       setSavedKeys(configured);
-    } catch {
-      // No keys saved yet
-    } finally {
-      setLoadingKeys(false);
-    }
+    } catch { /* No keys saved yet */ }
+    finally { setLoadingKeys(false); }
   };
 
   const handleKeyChange = (key: string, value: string) => {
@@ -111,40 +118,45 @@ export default function Settings() {
       await api.put('/settings/api-keys', { keys: apiKeys });
       toast.success('API keys saved successfully!');
       loadApiKeys();
-    } catch {
-      toast.error('Failed to save API keys');
-    } finally {
-      setSaving(false);
-    }
+    } catch { toast.error('Failed to save API keys'); }
+    finally { setSaving(false); }
   };
 
   const savePlatformKeys = async (config: ApiKeyConfig) => {
     setSaving(true);
     try {
       const keys: Record<string, string> = {};
-      config.keys.forEach(k => {
-        if (apiKeys[k.key]) keys[k.key] = apiKeys[k.key];
-      });
+      config.keys.forEach(k => { if (apiKeys[k.key]) keys[k.key] = apiKeys[k.key]; });
       await api.put('/settings/api-keys', { keys });
       toast.success(`${config.name} keys saved!`);
       loadApiKeys();
-    } catch {
-      toast.error('Failed to save keys');
-    } finally {
-      setSaving(false);
-    }
+    } catch { toast.error('Failed to save keys'); }
+    finally { setSaving(false); }
   };
+
+  const saveProfile = async () => {
+    setSaving(true);
+    try {
+      const { data } = await api.put('/auth/me', profileData);
+      updateUser(data);
+      if (profileData.theme) applyTheme(profileData.theme);
+      toast.success(t('saveChanges', lang));
+    } catch { toast.error('Failed to save profile'); }
+    finally { setSaving(false); }
+  };
+
+  const tabs = [
+    { key: 'profile' as const, icon: User, label: t('profile', lang) },
+    ...(admin ? [{ key: 'apikeys' as const, icon: Key, label: t('apiKeys', lang) }] : []),
+    { key: 'connections' as const, icon: Link2, label: t('connectedAccounts', lang) },
+  ];
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+      <h1 className="text-2xl font-bold text-gray-900">{t('settings', lang)}</h1>
 
       <div className="flex gap-2 border-b border-gray-200 pb-1">
-        {[
-          { key: 'profile' as const, icon: User, label: 'Profile' },
-          { key: 'apikeys' as const, icon: Key, label: 'API Keys' },
-          { key: 'connections' as const, icon: Link2, label: 'Connected Accounts' },
-        ].map(({ key, icon: Icon, label }) => (
+        {tabs.map(({ key, icon: Icon, label }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -161,14 +173,15 @@ export default function Settings() {
       {tab === 'profile' && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('fullName', lang)}</label>
             <input
-              defaultValue={user?.fullName}
+              value={profileData.fullName}
+              onChange={e => setProfileData({...profileData, fullName: e.target.value})}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('email', lang)}</label>
             <input
               defaultValue={user?.email}
               disabled
@@ -176,9 +189,10 @@ export default function Settings() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('timezone', lang)}</label>
             <select
-              defaultValue={user?.timezone}
+              value={profileData.timezone}
+              onChange={e => setProfileData({...profileData, timezone: e.target.value})}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm"
             >
               <option>UTC</option>
@@ -187,18 +201,57 @@ export default function Settings() {
               <option>America/New_York</option>
               <option>America/Los_Angeles</option>
               <option>Asia/Kolkata</option>
+              <option>Asia/Karachi</option>
+              <option>Asia/Dubai</option>
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Languages className="w-4 h-4 inline mr-1" />
+              {t('language', lang)}
+            </label>
+            <select
+              value={profileData.language}
+              onChange={e => setProfileData({...profileData, language: e.target.value})}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm"
+            >
+              {languages.map(l => (
+                <option key={l.code} value={l.code}>{l.nativeName} ({l.name})</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('theme', lang)}</label>
+            <div className="grid grid-cols-4 gap-2">
+              {themes.map(theme => (
+                <button
+                  key={theme.id}
+                  onClick={() => setProfileData({...profileData, theme: theme.id})}
+                  className={`p-2 rounded-lg border-2 text-center text-xs font-medium transition-all ${
+                    profileData.theme === theme.id ? 'border-brand-600 bg-brand-50' : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex gap-0.5 mb-1 justify-center">
+                    {[theme.colors[500], theme.colors[600], theme.colors[700]].map((c, i) => (
+                      <div key={i} className="w-4 h-4 rounded-full" style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
+                  {theme.name}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
-            onClick={() => toast.success('Profile updated!')}
-            className="px-6 py-2.5 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700"
+            onClick={saveProfile}
+            disabled={saving}
+            className="px-6 py-2.5 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
           >
-            Save Changes
+            {saving ? t('loading', lang) : t('saveChanges', lang)}
           </button>
         </div>
       )}
 
-      {tab === 'apikeys' && (
+      {tab === 'apikeys' && admin && (
         <div className="space-y-6">
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
             <p className="text-sm text-blue-800">
@@ -208,7 +261,7 @@ export default function Settings() {
           </div>
 
           {loadingKeys ? (
-            <div className="text-center py-8 text-gray-500">Loading API keys...</div>
+            <div className="text-center py-8 text-gray-500">{t('loading', lang)}</div>
           ) : (
             apiKeyConfigs.map(config => (
               <div key={config.platform} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -222,14 +275,14 @@ export default function Settings() {
                   <div className="flex items-center gap-2">
                     {config.keys.every(k => savedKeys[k.key]) ? (
                       <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                        <CheckCircle className="w-3 h-3" /> Configured
+                        <CheckCircle className="w-3 h-3" /> {t('configured', lang)}
                       </span>
                     ) : config.keys.some(k => savedKeys[k.key]) ? (
                       <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
                         <AlertCircle className="w-3 h-3" /> Partial
                       </span>
                     ) : (
-                      <span className="text-xs text-gray-400">Not configured</span>
+                      <span className="text-xs text-gray-400">{t('notConfigured', lang)}</span>
                     )}
                   </div>
                 </div>
@@ -260,7 +313,7 @@ export default function Settings() {
                     className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
                   >
                     <Save className="w-4 h-4" />
-                    {saving ? 'Saving...' : `Save ${config.name} Keys`}
+                    {saving ? t('loading', lang) : `${t('save', lang)} ${config.name}`}
                   </button>
                 </div>
               </div>
@@ -274,7 +327,7 @@ export default function Settings() {
               className="flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-xl font-medium hover:bg-brand-700 disabled:opacity-50"
             >
               <Save className="w-5 h-5" />
-              {saving ? 'Saving All...' : 'Save All API Keys'}
+              {saving ? t('loading', lang) : `${t('save', lang)} All API Keys`}
             </button>
           </div>
         </div>
@@ -282,7 +335,7 @@ export default function Settings() {
 
       {tab === 'connections' && (
         <div className="space-y-4">
-          <p className="text-sm text-gray-500">Connect your social media accounts to schedule and publish posts. Make sure you have configured API keys first.</p>
+          <p className="text-sm text-gray-500">Connect your social media accounts to schedule and publish posts. {admin ? '' : 'Contact your admin to configure API keys first.'}</p>
           {socialPlatforms.map(platform => (
             <div key={platform.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -291,11 +344,11 @@ export default function Settings() {
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-900">{platform.name}</h4>
-                  <p className="text-xs text-gray-500">Not connected</p>
+                  <p className="text-xs text-gray-500">{t('notConnected', lang)}</p>
                 </div>
               </div>
               <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
-                Connect
+                {t('connect', lang)}
               </button>
             </div>
           ))}

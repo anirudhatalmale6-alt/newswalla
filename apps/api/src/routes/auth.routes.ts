@@ -46,4 +46,21 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
+const updateProfileSchema = z.object({
+  fullName: z.string().min(1).optional(),
+  timezone: z.string().optional(),
+  language: z.string().optional(),
+  theme: z.string().optional(),
+});
+
+router.put('/me', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const input = updateProfileSchema.parse(req.body);
+    const user = await authService.updateProfile(req.user!.userId, input);
+    res.json(user);
+  } catch (err: any) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
 export default router;

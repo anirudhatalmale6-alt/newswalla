@@ -9,6 +9,7 @@ import aiRoutes from './ai.routes';
 import teamsRoutes from './teams.routes';
 import mediaRoutes from './media.routes';
 import settingsRoutes from './settings.routes';
+import adminRoutes from './admin.routes';
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use('/ai', aiRoutes);
 router.use('/teams', teamsRoutes);
 router.use('/media', mediaRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/admin', adminRoutes);
 
 export default router;

@@ -12,11 +12,22 @@ import InboxPage from './pages/InboxPage';
 import Analytics from './pages/Analytics';
 import Team from './pages/Team';
 import Settings from './pages/Settings';
+import AdminUsers from './pages/AdminUsers';
+import AdminTheme from './pages/AdminTheme';
+import AdminSubscription from './pages/AdminSubscription';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuthStore();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading...</div>;
   if (!token) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { token, loading, isAdmin } = useAuthStore();
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading...</div>;
+  if (!token) return <Navigate to="/login" replace />;
+  if (!isAdmin()) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -47,6 +58,9 @@ export default function App() {
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/team" element={<Team />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+          <Route path="/admin/theme" element={<AdminRoute><AdminTheme /></AdminRoute>} />
+          <Route path="/admin/subscription" element={<AdminRoute><AdminSubscription /></AdminRoute>} />
         </Route>
       </Routes>
     </BrowserRouter>

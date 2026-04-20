@@ -1,11 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth';
+import { adminMiddleware } from '../middleware/admin';
 import * as settingsService from '../services/settings.service';
 
 const router = Router();
 router.use(authMiddleware);
+router.use(adminMiddleware);
 
-// GET /api/settings - get all settings
+// GET /api/settings - get all settings (admin only)
 router.get('/', async (req: Request, res: Response) => {
   try {
     const settings = settingsService.getAllSettings();
@@ -15,18 +17,16 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/settings - update settings
+// PUT /api/settings - update settings (admin only)
 router.put('/', async (req: Request, res: Response) => {
   try {
     const { key, value, settings } = req.body;
 
     if (settings && typeof settings === 'object') {
-      // Bulk update: { settings: { key1: value1, key2: value2, ... } }
       for (const [k, v] of Object.entries(settings)) {
         settingsService.setSetting(k, String(v));
       }
     } else if (key && value !== undefined) {
-      // Single update: { key, value }
       settingsService.setSetting(key, String(value));
     } else {
       res.status(400).json({ error: 'Provide { key, value } or { settings: { ... } }' });
@@ -39,7 +39,7 @@ router.put('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/settings/api-keys - get all configured API keys (masked)
+// GET /api/settings/api-keys - get all configured API keys (admin only)
 router.get('/api-keys', async (req: Request, res: Response) => {
   try {
     const keys = settingsService.getApiKeysMasked();
@@ -49,7 +49,7 @@ router.get('/api-keys', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/settings/api-keys - update API keys
+// PUT /api/settings/api-keys - update API keys (admin only)
 router.put('/api-keys', async (req: Request, res: Response) => {
   try {
     const keys = req.body.keys || req.body;
@@ -63,5 +63,8 @@ router.put('/api-keys', async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// GET /api/settings/theme - public endpoint for global theme (no admin required)
+// This is accessed separately so regular users can get the theme
 
 export default router;

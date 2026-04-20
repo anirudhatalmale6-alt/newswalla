@@ -36,6 +36,9 @@ const API_KEY_SETTINGS = [
   'youtube_client_secret',
   'openai_api_key',
   'anthropic_api_key',
+  'stripe_publishable_key',
+  'stripe_secret_key',
+  'stripe_price_id',
 ];
 
 export function getApiKeys(): Record<string, string> {
