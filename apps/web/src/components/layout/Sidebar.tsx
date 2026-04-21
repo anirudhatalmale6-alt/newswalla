@@ -1,8 +1,8 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, PenSquare, Calendar, Inbox, BarChart3,
   Users, Settings, Zap, LogOut, Shield, UserCog, Palette, CreditCard,
-  Bell, CheckSquare, Languages, MessageSquare
+  Bell, CheckSquare, Languages, MessageSquare, Menu, X
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
@@ -13,6 +13,13 @@ export default function Sidebar() {
   const { user, logout, isAdmin } = useAuthStore();
   const lang = (user?.language || 'en') as LangCode;
   const [unreadCount, setUnreadCount] = useState(0);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+
+  // Close mobile menu on navigation
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -45,12 +52,17 @@ export default function Sidebar() {
     { to: '/admin/messages', icon: MessageSquare, label: 'Support Messages' },
   ];
 
-  return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen sticky top-0">
+  const sidebarContent = (
+    <>
       <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          <Zap className="w-8 h-8 text-brand-600" />
-          <span className="text-xl font-bold text-gray-900">NewsWalla</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-8 h-8 text-brand-600" />
+            <span className="text-xl font-bold text-gray-900">NewsWalla</span>
+          </div>
+          <button onClick={() => setMobileOpen(false)} className="lg:hidden p-1 rounded-lg hover:bg-gray-100">
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
         </div>
         <p className="text-xs text-gray-500 mt-1">Social Media Scheduler</p>
       </div>
@@ -114,7 +126,7 @@ export default function Sidebar() {
           <NavLink to={isAdmin() ? '/admin/approvals' : '/dashboard'} className="relative p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
             <Bell className="w-5 h-5 text-gray-400" />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center min-w-[18px] h-[18px]">
+              <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center min-w-[18px] h-[18px]">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -128,6 +140,46 @@ export default function Sidebar() {
           {t('signOut', lang)}
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile top bar */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-gray-100">
+          <Menu className="w-6 h-6 text-gray-700" />
+        </button>
+        <div className="flex items-center gap-2">
+          <Zap className="w-6 h-6 text-brand-600" />
+          <span className="text-lg font-bold text-gray-900">NewsWalla</span>
+        </div>
+        <NavLink to={isAdmin() ? '/admin/approvals' : '/dashboard'} className="relative p-2">
+          <Bell className="w-5 h-5 text-gray-400" />
+          {unreadCount > 0 && (
+            <span className="absolute top-0.5 right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center min-w-[16px] h-[16px]">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </NavLink>
+      </div>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setMobileOpen(false)}>
+          <aside
+            className="w-72 bg-white flex flex-col h-full shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col h-screen sticky top-0">
+        {sidebarContent}
+      </aside>
+    </>
   );
 }
